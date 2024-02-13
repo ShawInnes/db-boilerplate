@@ -19,13 +19,13 @@ export async function loader() {
 export default function Index() {
   const {data: people} = useLoaderData<typeof loader>();
   return (
-    <div>
-      <h1> People </h1>
-      <ul>
+    <div className="m-2">
+      <h1 className="text-2xl font-bold"> People </h1>
+      <div className="flex flex-col">
         {people.map((item) => (
-          <li key={item.businessentityid}>{item.firstname} {item.lastname}</li>
+          <div className="m-2" key={item.businessentityid}>{item.firstname} {item.lastname}</div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
