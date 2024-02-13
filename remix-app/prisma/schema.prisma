@@ -1,0 +1,1107 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["humanresources", "person", "production", "purchasing", "sales"]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model department {
+  departmentid              Int                         @id(map: "PK_Department_DepartmentID") @default(autoincrement())
+  name                      String                      @db.VarChar(50)
+  groupname                 String                      @db.VarChar(50)
+  modifieddate              DateTime                    @default(now()) @db.Timestamp(6)
+  employeedepartmenthistory employeedepartmenthistory[]
+
+  @@schema("humanresources")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model employee {
+  businessentityid          Int                         @id(map: "PK_Employee_BusinessEntityID")
+  nationalidnumber          String                      @db.VarChar(15)
+  loginid                   String                      @db.VarChar(256)
+  jobtitle                  String                      @db.VarChar(50)
+  birthdate                 DateTime                    @db.Date
+  maritalstatus             String                      @db.Char(1)
+  gender                    String                      @db.Char(1)
+  hiredate                  DateTime                    @db.Date
+  salariedflag              Boolean                     @default(true)
+  vacationhours             Int                         @default(0) @db.SmallInt
+  sickleavehours            Int                         @default(0) @db.SmallInt
+  currentflag               Boolean                     @default(true)
+  rowguid                   String                      @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate              DateTime                    @default(now()) @db.Timestamp(6)
+  organizationnode          String?                     @default("/") @db.VarChar
+  person                    person                      @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Employee_Person_BusinessEntityID")
+  employeedepartmenthistory employeedepartmenthistory[]
+  employeepayhistory        employeepayhistory[]
+  jobcandidate              jobcandidate[]
+  document                  document[]
+  purchaseorderheader       purchaseorderheader[]
+  salesperson               salesperson?
+
+  @@schema("humanresources")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model employeedepartmenthistory {
+  businessentityid Int
+  departmentid     Int
+  shiftid          Int
+  startdate        DateTime   @db.Date
+  enddate          DateTime?  @db.Date
+  modifieddate     DateTime   @default(now()) @db.Timestamp(6)
+  department       department @relation(fields: [departmentid], references: [departmentid], onDelete: NoAction, onUpdate: NoAction, map: "FK_EmployeeDepartmentHistory_Department_DepartmentID")
+  employee         employee   @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_EmployeeDepartmentHistory_Employee_BusinessEntityID")
+  shift            shift      @relation(fields: [shiftid], references: [shiftid], onDelete: NoAction, onUpdate: NoAction, map: "FK_EmployeeDepartmentHistory_Shift_ShiftID")
+
+  @@id([businessentityid, startdate, departmentid, shiftid], map: "PK_EmployeeDepartmentHistory_BusinessEntityID_StartDate_Departm")
+  @@schema("humanresources")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model employeepayhistory {
+  businessentityid Int
+  ratechangedate   DateTime @db.Timestamp(6)
+  rate             Decimal  @db.Decimal
+  payfrequency     Int      @db.SmallInt
+  modifieddate     DateTime @default(now()) @db.Timestamp(6)
+  employee         employee @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_EmployeePayHistory_Employee_BusinessEntityID")
+
+  @@id([businessentityid, ratechangedate], map: "PK_EmployeePayHistory_BusinessEntityID_RateChangeDate")
+  @@schema("humanresources")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model jobcandidate {
+  jobcandidateid   Int       @id(map: "PK_JobCandidate_JobCandidateID") @default(autoincrement())
+  businessentityid Int?
+  resume           String?   @db.Xml
+  modifieddate     DateTime  @default(now()) @db.Timestamp(6)
+  employee         employee? @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_JobCandidate_Employee_BusinessEntityID")
+
+  @@schema("humanresources")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model shift {
+  shiftid                   Int                         @id(map: "PK_Shift_ShiftID") @default(autoincrement())
+  name                      String                      @db.VarChar(50)
+  starttime                 DateTime                    @db.Time(6)
+  endtime                   DateTime                    @db.Time(6)
+  modifieddate              DateTime                    @default(now()) @db.Timestamp(6)
+  employeedepartmenthistory employeedepartmenthistory[]
+
+  @@schema("humanresources")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model address {
+  addressid                                                  Int                     @id(map: "PK_Address_AddressID") @default(autoincrement())
+  addressline1                                               String                  @db.VarChar(60)
+  addressline2                                               String?                 @db.VarChar(60)
+  city                                                       String                  @db.VarChar(30)
+  stateprovinceid                                            Int
+  postalcode                                                 String                  @db.VarChar(15)
+  spatiallocation                                            String?                 @db.VarChar(44)
+  rowguid                                                    String                  @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate                                               DateTime                @default(now()) @db.Timestamp(6)
+  stateprovince                                              stateprovince           @relation(fields: [stateprovinceid], references: [stateprovinceid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Address_StateProvince_StateProvinceID")
+  businessentityaddress                                      businessentityaddress[]
+  salesorderheader_salesorderheader_billtoaddressidToaddress salesorderheader[]      @relation("salesorderheader_billtoaddressidToaddress")
+  salesorderheader_salesorderheader_shiptoaddressidToaddress salesorderheader[]      @relation("salesorderheader_shiptoaddressidToaddress")
+
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model addresstype {
+  addresstypeid         Int                     @id(map: "PK_AddressType_AddressTypeID") @default(autoincrement())
+  name                  String                  @db.VarChar(50)
+  rowguid               String                  @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate          DateTime                @default(now()) @db.Timestamp(6)
+  businessentityaddress businessentityaddress[]
+
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model businessentity {
+  businessentityid      Int                     @id(map: "PK_BusinessEntity_BusinessEntityID") @default(autoincrement())
+  rowguid               String                  @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate          DateTime                @default(now()) @db.Timestamp(6)
+  businessentityaddress businessentityaddress[]
+  businessentitycontact businessentitycontact[]
+  person                person?
+  vendor                vendor?
+  store                 store?
+
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model businessentityaddress {
+  businessentityid Int
+  addressid        Int
+  addresstypeid    Int
+  rowguid          String         @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime       @default(now()) @db.Timestamp(6)
+  addresstype      addresstype    @relation(fields: [addresstypeid], references: [addresstypeid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BusinessEntityAddress_AddressType_AddressTypeID")
+  address          address        @relation(fields: [addressid], references: [addressid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BusinessEntityAddress_Address_AddressID")
+  businessentity   businessentity @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BusinessEntityAddress_BusinessEntity_BusinessEntityID")
+
+  @@id([businessentityid, addressid, addresstypeid], map: "PK_BusinessEntityAddress_BusinessEntityID_AddressID_AddressType")
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model businessentitycontact {
+  businessentityid Int
+  personid         Int
+  contacttypeid    Int
+  rowguid          String         @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime       @default(now()) @db.Timestamp(6)
+  businessentity   businessentity @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BusinessEntityContact_BusinessEntity_BusinessEntityID")
+  contacttype      contacttype    @relation(fields: [contacttypeid], references: [contacttypeid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BusinessEntityContact_ContactType_ContactTypeID")
+  person           person         @relation(fields: [personid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BusinessEntityContact_Person_PersonID")
+
+  @@id([businessentityid, personid, contacttypeid], map: "PK_BusinessEntityContact_BusinessEntityID_PersonID_ContactTypeI")
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model contacttype {
+  contacttypeid         Int                     @id(map: "PK_ContactType_ContactTypeID") @default(autoincrement())
+  name                  String                  @db.VarChar(50)
+  modifieddate          DateTime                @default(now()) @db.Timestamp(6)
+  businessentitycontact businessentitycontact[]
+
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model countryregion {
+  countryregioncode     String                  @id(map: "PK_CountryRegion_CountryRegionCode") @db.VarChar(3)
+  name                  String                  @db.VarChar(50)
+  modifieddate          DateTime                @default(now()) @db.Timestamp(6)
+  stateprovince         stateprovince[]
+  countryregioncurrency countryregioncurrency[]
+  salesterritory        salesterritory[]
+
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model emailaddress {
+  businessentityid Int
+  emailaddressid   Int      @default(autoincrement())
+  emailaddress     String?  @db.VarChar(50)
+  rowguid          String   @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime @default(now()) @db.Timestamp(6)
+  person           person   @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_EmailAddress_Person_BusinessEntityID")
+
+  @@id([businessentityid, emailaddressid], map: "PK_EmailAddress_BusinessEntityID_EmailAddressID")
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model password {
+  businessentityid Int      @id(map: "PK_Password_BusinessEntityID")
+  passwordhash     String   @db.VarChar(128)
+  passwordsalt     String   @db.VarChar(10)
+  rowguid          String   @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime @default(now()) @db.Timestamp(6)
+  person           person   @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Password_Person_BusinessEntityID")
+
+  @@schema("person")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model person {
+  businessentityid      Int                     @id(map: "PK_Person_BusinessEntityID")
+  persontype            String                  @db.Char(2)
+  namestyle             Boolean                 @default(false)
+  title                 String?                 @db.VarChar(8)
+  firstname             String                  @db.VarChar(50)
+  middlename            String?                 @db.VarChar(50)
+  lastname              String                  @db.VarChar(50)
+  suffix                String?                 @db.VarChar(10)
+  emailpromotion        Int                     @default(0)
+  additionalcontactinfo String?                 @db.Xml
+  demographics          String?                 @db.Xml
+  rowguid               String                  @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate          DateTime                @default(now()) @db.Timestamp(6)
+  employee              employee?
+  businessentitycontact businessentitycontact[]
+  emailaddress          emailaddress[]
+  password              password?
+  businessentity        businessentity          @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Person_BusinessEntity_BusinessEntityID")
+  personphone           personphone[]
+  customer              customer[]
+  personcreditcard      personcreditcard[]
+
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model personphone {
+  businessentityid  Int
+  phonenumber       String          @db.VarChar(25)
+  phonenumbertypeid Int
+  modifieddate      DateTime        @default(now()) @db.Timestamp(6)
+  person            person          @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PersonPhone_Person_BusinessEntityID")
+  phonenumbertype   phonenumbertype @relation(fields: [phonenumbertypeid], references: [phonenumbertypeid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PersonPhone_PhoneNumberType_PhoneNumberTypeID")
+
+  @@id([businessentityid, phonenumber, phonenumbertypeid], map: "PK_PersonPhone_BusinessEntityID_PhoneNumber_PhoneNumberTypeID")
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model phonenumbertype {
+  phonenumbertypeid Int           @id(map: "PK_PhoneNumberType_PhoneNumberTypeID") @default(autoincrement())
+  name              String        @db.VarChar(50)
+  modifieddate      DateTime      @default(now()) @db.Timestamp(6)
+  personphone       personphone[]
+
+  @@schema("person")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model stateprovince {
+  stateprovinceid         Int            @id(map: "PK_StateProvince_StateProvinceID") @default(autoincrement())
+  stateprovincecode       String         @db.Char(3)
+  countryregioncode       String         @db.VarChar(3)
+  isonlystateprovinceflag Boolean        @default(true)
+  name                    String         @db.VarChar(50)
+  territoryid             Int
+  rowguid                 String         @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate            DateTime       @default(now()) @db.Timestamp(6)
+  address                 address[]
+  countryregion           countryregion  @relation(fields: [countryregioncode], references: [countryregioncode], onDelete: NoAction, onUpdate: NoAction, map: "FK_StateProvince_CountryRegion_CountryRegionCode")
+  salesterritory          salesterritory @relation(fields: [territoryid], references: [territoryid], onDelete: NoAction, onUpdate: NoAction, map: "FK_StateProvince_SalesTerritory_TerritoryID")
+  salestaxrate            salestaxrate[]
+
+  @@schema("person")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model billofmaterials {
+  billofmaterialsid                                  Int         @id(map: "PK_BillOfMaterials_BillOfMaterialsID") @default(autoincrement())
+  productassemblyid                                  Int?
+  componentid                                        Int
+  startdate                                          DateTime    @default(now()) @db.Timestamp(6)
+  enddate                                            DateTime?   @db.Timestamp(6)
+  unitmeasurecode                                    String      @db.Char(3)
+  bomlevel                                           Int         @db.SmallInt
+  perassemblyqty                                     Decimal     @default(1.00) @db.Decimal(8, 2)
+  modifieddate                                       DateTime    @default(now()) @db.Timestamp(6)
+  product_billofmaterials_componentidToproduct       product     @relation("billofmaterials_componentidToproduct", fields: [componentid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BillOfMaterials_Product_ComponentID")
+  product_billofmaterials_productassemblyidToproduct product?    @relation("billofmaterials_productassemblyidToproduct", fields: [productassemblyid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_BillOfMaterials_Product_ProductAssemblyID")
+  unitmeasure                                        unitmeasure @relation(fields: [unitmeasurecode], references: [unitmeasurecode], onDelete: NoAction, onUpdate: NoAction, map: "FK_BillOfMaterials_UnitMeasure_UnitMeasureCode")
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model culture {
+  cultureid                             String                                  @id(map: "PK_Culture_CultureID") @db.Char(6)
+  name                                  String                                  @db.VarChar(50)
+  modifieddate                          DateTime                                @default(now()) @db.Timestamp(6)
+  productmodelproductdescriptionculture productmodelproductdescriptionculture[]
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model document {
+  title           String            @db.VarChar(50)
+  owner           Int
+  folderflag      Boolean           @default(false)
+  filename        String            @db.VarChar(400)
+  fileextension   String?           @db.VarChar(8)
+  revision        String            @db.Char(5)
+  changenumber    Int               @default(0)
+  status          Int               @db.SmallInt
+  documentsummary String?
+  document        Bytes?
+  rowguid         String            @unique @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate    DateTime          @default(now()) @db.Timestamp(6)
+  documentnode    String            @id(map: "PK_Document_DocumentNode") @default("/") @db.VarChar
+  employee        employee          @relation(fields: [owner], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Document_Employee_Owner")
+  productdocument productdocument[]
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model illustration {
+  illustrationid           Int                        @id(map: "PK_Illustration_IllustrationID") @default(autoincrement())
+  diagram                  String?                    @db.Xml
+  modifieddate             DateTime                   @default(now()) @db.Timestamp(6)
+  productmodelillustration productmodelillustration[]
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model location {
+  locationid       Int                @id(map: "PK_Location_LocationID") @default(autoincrement())
+  name             String             @db.VarChar(50)
+  costrate         Decimal            @default(0.00) @db.Decimal
+  availability     Decimal            @default(0.00) @db.Decimal(8, 2)
+  modifieddate     DateTime           @default(now()) @db.Timestamp(6)
+  productinventory productinventory[]
+  workorderrouting workorderrouting[]
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model product {
+  productid                                                  Int                       @id(map: "PK_Product_ProductID") @default(autoincrement())
+  name                                                       String                    @db.VarChar(50)
+  productnumber                                              String                    @db.VarChar(25)
+  makeflag                                                   Boolean                   @default(true)
+  finishedgoodsflag                                          Boolean                   @default(true)
+  color                                                      String?                   @db.VarChar(15)
+  safetystocklevel                                           Int                       @db.SmallInt
+  reorderpoint                                               Int                       @db.SmallInt
+  standardcost                                               Decimal                   @db.Decimal
+  listprice                                                  Decimal                   @db.Decimal
+  size                                                       String?                   @db.VarChar(5)
+  sizeunitmeasurecode                                        String?                   @db.Char(3)
+  weightunitmeasurecode                                      String?                   @db.Char(3)
+  weight                                                     Decimal?                  @db.Decimal(8, 2)
+  daystomanufacture                                          Int
+  productline                                                String?                   @db.Char(2)
+  class                                                      String?                   @db.Char(2)
+  style                                                      String?                   @db.Char(2)
+  productsubcategoryid                                       Int?
+  productmodelid                                             Int?
+  sellstartdate                                              DateTime                  @db.Timestamp(6)
+  sellenddate                                                DateTime?                 @db.Timestamp(6)
+  discontinueddate                                           DateTime?                 @db.Timestamp(6)
+  rowguid                                                    String                    @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate                                               DateTime                  @default(now()) @db.Timestamp(6)
+  billofmaterials_billofmaterials_componentidToproduct       billofmaterials[]         @relation("billofmaterials_componentidToproduct")
+  billofmaterials_billofmaterials_productassemblyidToproduct billofmaterials[]         @relation("billofmaterials_productassemblyidToproduct")
+  productmodel                                               productmodel?             @relation(fields: [productmodelid], references: [productmodelid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Product_ProductModel_ProductModelID")
+  productsubcategory                                         productsubcategory?       @relation(fields: [productsubcategoryid], references: [productsubcategoryid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Product_ProductSubcategory_ProductSubcategoryID")
+  unitmeasure_product_sizeunitmeasurecodeTounitmeasure       unitmeasure?              @relation("product_sizeunitmeasurecodeTounitmeasure", fields: [sizeunitmeasurecode], references: [unitmeasurecode], onDelete: NoAction, onUpdate: NoAction, map: "FK_Product_UnitMeasure_SizeUnitMeasureCode")
+  unitmeasure_product_weightunitmeasurecodeTounitmeasure     unitmeasure?              @relation("product_weightunitmeasurecodeTounitmeasure", fields: [weightunitmeasurecode], references: [unitmeasurecode], onDelete: NoAction, onUpdate: NoAction, map: "FK_Product_UnitMeasure_WeightUnitMeasureCode")
+  productcosthistory                                         productcosthistory[]
+  productdocument                                            productdocument[]
+  productinventory                                           productinventory[]
+  productlistpricehistory                                    productlistpricehistory[]
+  productproductphoto                                        productproductphoto[]
+  productreview                                              productreview[]
+  transactionhistory                                         transactionhistory[]
+  workorder                                                  workorder[]
+  productvendor                                              productvendor[]
+  purchaseorderdetail                                        purchaseorderdetail[]
+  shoppingcartitem                                           shoppingcartitem[]
+  specialofferproduct                                        specialofferproduct[]
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productcategory {
+  productcategoryid  Int                  @id(map: "PK_ProductCategory_ProductCategoryID") @default(autoincrement())
+  name               String               @db.VarChar(50)
+  rowguid            String               @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate       DateTime             @default(now()) @db.Timestamp(6)
+  productsubcategory productsubcategory[]
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productcosthistory {
+  productid    Int
+  startdate    DateTime  @db.Timestamp(6)
+  enddate      DateTime? @db.Timestamp(6)
+  standardcost Decimal   @db.Decimal
+  modifieddate DateTime  @default(now()) @db.Timestamp(6)
+  product      product   @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductCostHistory_Product_ProductID")
+
+  @@id([productid, startdate], map: "PK_ProductCostHistory_ProductID_StartDate")
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productdescription {
+  productdescriptionid                  Int                                     @id(map: "PK_ProductDescription_ProductDescriptionID") @default(autoincrement())
+  description                           String                                  @db.VarChar(400)
+  rowguid                               String                                  @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate                          DateTime                                @default(now()) @db.Timestamp(6)
+  productmodelproductdescriptionculture productmodelproductdescriptionculture[]
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productdocument {
+  productid    Int
+  modifieddate DateTime @default(now()) @db.Timestamp(6)
+  documentnode String   @default("/") @db.VarChar
+  document     document @relation(fields: [documentnode], references: [documentnode], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductDocument_Document_DocumentNode")
+  product      product  @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductDocument_Product_ProductID")
+
+  @@id([productid, documentnode], map: "PK_ProductDocument_ProductID_DocumentNode")
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productinventory {
+  productid    Int
+  locationid   Int
+  shelf        String   @db.VarChar(10)
+  bin          Int      @db.SmallInt
+  quantity     Int      @default(0) @db.SmallInt
+  rowguid      String   @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate DateTime @default(now()) @db.Timestamp(6)
+  location     location @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductInventory_Location_LocationID")
+  product      product  @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductInventory_Product_ProductID")
+
+  @@id([productid, locationid], map: "PK_ProductInventory_ProductID_LocationID")
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productlistpricehistory {
+  productid    Int
+  startdate    DateTime  @db.Timestamp(6)
+  enddate      DateTime? @db.Timestamp(6)
+  listprice    Decimal   @db.Decimal
+  modifieddate DateTime  @default(now()) @db.Timestamp(6)
+  product      product   @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductListPriceHistory_Product_ProductID")
+
+  @@id([productid, startdate], map: "PK_ProductListPriceHistory_ProductID_StartDate")
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productmodel {
+  productmodelid                        Int                                     @id(map: "PK_ProductModel_ProductModelID") @default(autoincrement())
+  name                                  String                                  @db.VarChar(50)
+  catalogdescription                    String?                                 @db.Xml
+  instructions                          String?                                 @db.Xml
+  rowguid                               String                                  @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate                          DateTime                                @default(now()) @db.Timestamp(6)
+  product                               product[]
+  productmodelillustration              productmodelillustration[]
+  productmodelproductdescriptionculture productmodelproductdescriptionculture[]
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productmodelillustration {
+  productmodelid Int
+  illustrationid Int
+  modifieddate   DateTime     @default(now()) @db.Timestamp(6)
+  illustration   illustration @relation(fields: [illustrationid], references: [illustrationid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductModelIllustration_Illustration_IllustrationID")
+  productmodel   productmodel @relation(fields: [productmodelid], references: [productmodelid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductModelIllustration_ProductModel_ProductModelID")
+
+  @@id([productmodelid, illustrationid], map: "PK_ProductModelIllustration_ProductModelID_IllustrationID")
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productmodelproductdescriptionculture {
+  productmodelid       Int
+  productdescriptionid Int
+  cultureid            String             @db.Char(6)
+  modifieddate         DateTime           @default(now()) @db.Timestamp(6)
+  culture              culture            @relation(fields: [cultureid], references: [cultureid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductModelProductDescriptionCulture_Culture_CultureID")
+  productdescription   productdescription @relation(fields: [productdescriptionid], references: [productdescriptionid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductModelProductDescriptionCulture_ProductDescription_Pro")
+  productmodel         productmodel       @relation(fields: [productmodelid], references: [productmodelid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductModelProductDescriptionCulture_ProductModel_ProductMo")
+
+  @@id([productmodelid, productdescriptionid, cultureid], map: "PK_ProductModelProductDescriptionCulture_ProductModelID_Product")
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productphoto {
+  productphotoid         Int                   @id(map: "PK_ProductPhoto_ProductPhotoID") @default(autoincrement())
+  thumbnailphoto         Bytes?
+  thumbnailphotofilename String?               @db.VarChar(50)
+  largephoto             Bytes?
+  largephotofilename     String?               @db.VarChar(50)
+  modifieddate           DateTime              @default(now()) @db.Timestamp(6)
+  productproductphoto    productproductphoto[]
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productproductphoto {
+  productid      Int
+  productphotoid Int
+  primary        Boolean      @default(false)
+  modifieddate   DateTime     @default(now()) @db.Timestamp(6)
+  productphoto   productphoto @relation(fields: [productphotoid], references: [productphotoid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductProductPhoto_ProductPhoto_ProductPhotoID")
+  product        product      @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductProductPhoto_Product_ProductID")
+
+  @@id([productid, productphotoid], map: "PK_ProductProductPhoto_ProductID_ProductPhotoID")
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productreview {
+  productreviewid Int      @id(map: "PK_ProductReview_ProductReviewID") @default(autoincrement())
+  productid       Int
+  reviewername    String   @db.VarChar(50)
+  reviewdate      DateTime @default(now()) @db.Timestamp(6)
+  emailaddress    String   @db.VarChar(50)
+  rating          Int
+  comments        String?  @db.VarChar(3850)
+  modifieddate    DateTime @default(now()) @db.Timestamp(6)
+  product         product  @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductReview_Product_ProductID")
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productsubcategory {
+  productsubcategoryid Int             @id(map: "PK_ProductSubcategory_ProductSubcategoryID") @default(autoincrement())
+  productcategoryid    Int
+  name                 String          @db.VarChar(50)
+  rowguid              String          @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate         DateTime        @default(now()) @db.Timestamp(6)
+  product              product[]
+  productcategory      productcategory @relation(fields: [productcategoryid], references: [productcategoryid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductSubcategory_ProductCategory_ProductCategoryID")
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model scrapreason {
+  scrapreasonid Int         @id(map: "PK_ScrapReason_ScrapReasonID") @default(autoincrement())
+  name          String      @db.VarChar(50)
+  modifieddate  DateTime    @default(now()) @db.Timestamp(6)
+  workorder     workorder[]
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model transactionhistory {
+  transactionid        Int      @id(map: "PK_TransactionHistory_TransactionID") @default(autoincrement())
+  productid            Int
+  referenceorderid     Int
+  referenceorderlineid Int      @default(0)
+  transactiondate      DateTime @default(now()) @db.Timestamp(6)
+  transactiontype      String   @db.Char(1)
+  quantity             Int
+  actualcost           Decimal  @db.Decimal
+  modifieddate         DateTime @default(now()) @db.Timestamp(6)
+  product              product  @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_TransactionHistory_Product_ProductID")
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model transactionhistoryarchive {
+  transactionid        Int      @id(map: "PK_TransactionHistoryArchive_TransactionID")
+  productid            Int
+  referenceorderid     Int
+  referenceorderlineid Int      @default(0)
+  transactiondate      DateTime @default(now()) @db.Timestamp(6)
+  transactiontype      String   @db.Char(1)
+  quantity             Int
+  actualcost           Decimal  @db.Decimal
+  modifieddate         DateTime @default(now()) @db.Timestamp(6)
+
+  @@schema("production")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model unitmeasure {
+  unitmeasurecode                                    String            @id(map: "PK_UnitMeasure_UnitMeasureCode") @db.Char(3)
+  name                                               String            @db.VarChar(50)
+  modifieddate                                       DateTime          @default(now()) @db.Timestamp(6)
+  billofmaterials                                    billofmaterials[]
+  product_product_sizeunitmeasurecodeTounitmeasure   product[]         @relation("product_sizeunitmeasurecodeTounitmeasure")
+  product_product_weightunitmeasurecodeTounitmeasure product[]         @relation("product_weightunitmeasurecodeTounitmeasure")
+  productvendor                                      productvendor[]
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workorder {
+  workorderid      Int                @id(map: "PK_WorkOrder_WorkOrderID") @default(autoincrement())
+  productid        Int
+  orderqty         Int
+  scrappedqty      Int                @db.SmallInt
+  startdate        DateTime           @db.Timestamp(6)
+  enddate          DateTime?          @db.Timestamp(6)
+  duedate          DateTime           @db.Timestamp(6)
+  scrapreasonid    Int?
+  modifieddate     DateTime           @default(now()) @db.Timestamp(6)
+  product          product            @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_WorkOrder_Product_ProductID")
+  scrapreason      scrapreason?       @relation(fields: [scrapreasonid], references: [scrapreasonid], onDelete: NoAction, onUpdate: NoAction, map: "FK_WorkOrder_ScrapReason_ScrapReasonID")
+  workorderrouting workorderrouting[]
+
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model workorderrouting {
+  workorderid        Int
+  productid          Int
+  operationsequence  Int       @db.SmallInt
+  locationid         Int
+  scheduledstartdate DateTime  @db.Timestamp(6)
+  scheduledenddate   DateTime  @db.Timestamp(6)
+  actualstartdate    DateTime? @db.Timestamp(6)
+  actualenddate      DateTime? @db.Timestamp(6)
+  actualresourcehrs  Decimal?  @db.Decimal(9, 4)
+  plannedcost        Decimal   @db.Decimal
+  actualcost         Decimal?  @db.Decimal
+  modifieddate       DateTime  @default(now()) @db.Timestamp(6)
+  location           location  @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "FK_WorkOrderRouting_Location_LocationID")
+  workorder          workorder @relation(fields: [workorderid], references: [workorderid], onDelete: NoAction, onUpdate: NoAction, map: "FK_WorkOrderRouting_WorkOrder_WorkOrderID")
+
+  @@id([workorderid, productid, operationsequence], map: "PK_WorkOrderRouting_WorkOrderID_ProductID_OperationSequence")
+  @@schema("production")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model productvendor {
+  productid        Int
+  businessentityid Int
+  averageleadtime  Int
+  standardprice    Decimal     @db.Decimal
+  lastreceiptcost  Decimal?    @db.Decimal
+  lastreceiptdate  DateTime?   @db.Timestamp(6)
+  minorderqty      Int
+  maxorderqty      Int
+  onorderqty       Int?
+  unitmeasurecode  String      @db.Char(3)
+  modifieddate     DateTime    @default(now()) @db.Timestamp(6)
+  product          product     @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductVendor_Product_ProductID")
+  unitmeasure      unitmeasure @relation(fields: [unitmeasurecode], references: [unitmeasurecode], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductVendor_UnitMeasure_UnitMeasureCode")
+  vendor           vendor      @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ProductVendor_Vendor_BusinessEntityID")
+
+  @@id([productid, businessentityid], map: "PK_ProductVendor_ProductID_BusinessEntityID")
+  @@schema("purchasing")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model purchaseorderdetail {
+  purchaseorderid       Int
+  purchaseorderdetailid Int                 @default(autoincrement())
+  duedate               DateTime            @db.Timestamp(6)
+  orderqty              Int                 @db.SmallInt
+  productid             Int
+  unitprice             Decimal             @db.Decimal
+  receivedqty           Decimal             @db.Decimal(8, 2)
+  rejectedqty           Decimal             @db.Decimal(8, 2)
+  modifieddate          DateTime            @default(now()) @db.Timestamp(6)
+  product               product             @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PurchaseOrderDetail_Product_ProductID")
+  purchaseorderheader   purchaseorderheader @relation(fields: [purchaseorderid], references: [purchaseorderid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PurchaseOrderDetail_PurchaseOrderHeader_PurchaseOrderID")
+
+  @@id([purchaseorderid, purchaseorderdetailid], map: "PK_PurchaseOrderDetail_PurchaseOrderID_PurchaseOrderDetailID")
+  @@schema("purchasing")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model purchaseorderheader {
+  purchaseorderid     Int                   @id(map: "PK_PurchaseOrderHeader_PurchaseOrderID") @default(autoincrement())
+  revisionnumber      Int                   @default(0) @db.SmallInt
+  status              Int                   @default(1) @db.SmallInt
+  employeeid          Int
+  vendorid            Int
+  shipmethodid        Int
+  orderdate           DateTime              @default(now()) @db.Timestamp(6)
+  shipdate            DateTime?             @db.Timestamp(6)
+  subtotal            Decimal               @default(0.00) @db.Decimal
+  taxamt              Decimal               @default(0.00) @db.Decimal
+  freight             Decimal               @default(0.00) @db.Decimal
+  modifieddate        DateTime              @default(now()) @db.Timestamp(6)
+  purchaseorderdetail purchaseorderdetail[]
+  employee            employee              @relation(fields: [employeeid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PurchaseOrderHeader_Employee_EmployeeID")
+  shipmethod          shipmethod            @relation(fields: [shipmethodid], references: [shipmethodid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PurchaseOrderHeader_ShipMethod_ShipMethodID")
+  vendor              vendor                @relation(fields: [vendorid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PurchaseOrderHeader_Vendor_VendorID")
+
+  @@schema("purchasing")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model shipmethod {
+  shipmethodid        Int                   @id(map: "PK_ShipMethod_ShipMethodID") @default(autoincrement())
+  name                String                @db.VarChar(50)
+  shipbase            Decimal               @default(0.00) @db.Decimal
+  shiprate            Decimal               @default(0.00) @db.Decimal
+  rowguid             String                @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate        DateTime              @default(now()) @db.Timestamp(6)
+  purchaseorderheader purchaseorderheader[]
+  salesorderheader    salesorderheader[]
+
+  @@schema("purchasing")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model vendor {
+  businessentityid        Int                   @id(map: "PK_Vendor_BusinessEntityID")
+  accountnumber           String                @db.VarChar(15)
+  name                    String                @db.VarChar(50)
+  creditrating            Int                   @db.SmallInt
+  preferredvendorstatus   Boolean               @default(true)
+  activeflag              Boolean               @default(true)
+  purchasingwebserviceurl String?               @db.VarChar(1024)
+  modifieddate            DateTime              @default(now()) @db.Timestamp(6)
+  productvendor           productvendor[]
+  purchaseorderheader     purchaseorderheader[]
+  businessentity          businessentity        @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Vendor_BusinessEntity_BusinessEntityID")
+
+  @@schema("purchasing")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model countryregioncurrency {
+  countryregioncode String        @db.VarChar(3)
+  currencycode      String        @db.Char(3)
+  modifieddate      DateTime      @default(now()) @db.Timestamp(6)
+  countryregion     countryregion @relation(fields: [countryregioncode], references: [countryregioncode], onDelete: NoAction, onUpdate: NoAction, map: "FK_CountryRegionCurrency_CountryRegion_CountryRegionCode")
+  currency          currency      @relation(fields: [currencycode], references: [currencycode], onDelete: NoAction, onUpdate: NoAction, map: "FK_CountryRegionCurrency_Currency_CurrencyCode")
+
+  @@id([countryregioncode, currencycode], map: "PK_CountryRegionCurrency_CountryRegionCode_CurrencyCode")
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model creditcard {
+  creditcardid     Int                @id(map: "PK_CreditCard_CreditCardID") @default(autoincrement())
+  cardtype         String             @db.VarChar(50)
+  cardnumber       String             @db.VarChar(25)
+  expmonth         Int                @db.SmallInt
+  expyear          Int                @db.SmallInt
+  modifieddate     DateTime           @default(now()) @db.Timestamp(6)
+  personcreditcard personcreditcard[]
+  salesorderheader salesorderheader[]
+
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model currency {
+  currencycode                                         String                  @id(map: "PK_Currency_CurrencyCode") @db.Char(3)
+  name                                                 String                  @db.VarChar(50)
+  modifieddate                                         DateTime                @default(now()) @db.Timestamp(6)
+  countryregioncurrency                                countryregioncurrency[]
+  currencyrate_currencyrate_fromcurrencycodeTocurrency currencyrate[]          @relation("currencyrate_fromcurrencycodeTocurrency")
+  currencyrate_currencyrate_tocurrencycodeTocurrency   currencyrate[]          @relation("currencyrate_tocurrencycodeTocurrency")
+
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model currencyrate {
+  currencyrateid                                   Int                @id(map: "PK_CurrencyRate_CurrencyRateID") @default(autoincrement())
+  currencyratedate                                 DateTime           @db.Timestamp(6)
+  fromcurrencycode                                 String             @db.Char(3)
+  tocurrencycode                                   String             @db.Char(3)
+  averagerate                                      Decimal            @db.Decimal
+  endofdayrate                                     Decimal            @db.Decimal
+  modifieddate                                     DateTime           @default(now()) @db.Timestamp(6)
+  currency_currencyrate_fromcurrencycodeTocurrency currency           @relation("currencyrate_fromcurrencycodeTocurrency", fields: [fromcurrencycode], references: [currencycode], onDelete: NoAction, onUpdate: NoAction, map: "FK_CurrencyRate_Currency_FromCurrencyCode")
+  currency_currencyrate_tocurrencycodeTocurrency   currency           @relation("currencyrate_tocurrencycodeTocurrency", fields: [tocurrencycode], references: [currencycode], onDelete: NoAction, onUpdate: NoAction, map: "FK_CurrencyRate_Currency_ToCurrencyCode")
+  salesorderheader                                 salesorderheader[]
+
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model customer {
+  customerid       Int                @id(map: "PK_Customer_CustomerID") @default(autoincrement())
+  personid         Int?
+  storeid          Int?
+  territoryid      Int?
+  rowguid          String             @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime           @default(now()) @db.Timestamp(6)
+  person           person?            @relation(fields: [personid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Customer_Person_PersonID")
+  salesterritory   salesterritory?    @relation(fields: [territoryid], references: [territoryid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Customer_SalesTerritory_TerritoryID")
+  store            store?             @relation(fields: [storeid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Customer_Store_StoreID")
+  salesorderheader salesorderheader[]
+
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model personcreditcard {
+  businessentityid Int
+  creditcardid     Int
+  modifieddate     DateTime   @default(now()) @db.Timestamp(6)
+  creditcard       creditcard @relation(fields: [creditcardid], references: [creditcardid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PersonCreditCard_CreditCard_CreditCardID")
+  person           person     @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_PersonCreditCard_Person_BusinessEntityID")
+
+  @@id([businessentityid, creditcardid], map: "PK_PersonCreditCard_BusinessEntityID_CreditCardID")
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salesorderdetail {
+  salesorderid          Int
+  salesorderdetailid    Int                 @default(autoincrement())
+  carriertrackingnumber String?             @db.VarChar(25)
+  orderqty              Int                 @db.SmallInt
+  productid             Int
+  specialofferid        Int
+  unitprice             Decimal             @db.Decimal
+  unitpricediscount     Decimal             @default(0.0) @db.Decimal
+  rowguid               String              @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate          DateTime            @default(now()) @db.Timestamp(6)
+  salesorderheader      salesorderheader    @relation(fields: [salesorderid], references: [salesorderid], onDelete: Cascade, onUpdate: NoAction, map: "FK_SalesOrderDetail_SalesOrderHeader_SalesOrderID")
+  specialofferproduct   specialofferproduct @relation(fields: [specialofferid, productid], references: [specialofferid, productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderDetail_SpecialOfferProduct_SpecialOfferIDProductID")
+
+  @@id([salesorderid, salesorderdetailid], map: "PK_SalesOrderDetail_SalesOrderID_SalesOrderDetailID")
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salesorderheader {
+  salesorderid                                      Int                           @id(map: "PK_SalesOrderHeader_SalesOrderID") @default(autoincrement())
+  revisionnumber                                    Int                           @default(0) @db.SmallInt
+  orderdate                                         DateTime                      @default(now()) @db.Timestamp(6)
+  duedate                                           DateTime                      @db.Timestamp(6)
+  shipdate                                          DateTime?                     @db.Timestamp(6)
+  status                                            Int                           @default(1) @db.SmallInt
+  onlineorderflag                                   Boolean                       @default(true)
+  purchaseordernumber                               String?                       @db.VarChar(25)
+  accountnumber                                     String?                       @db.VarChar(15)
+  customerid                                        Int
+  salespersonid                                     Int?
+  territoryid                                       Int?
+  billtoaddressid                                   Int
+  shiptoaddressid                                   Int
+  shipmethodid                                      Int
+  creditcardid                                      Int?
+  creditcardapprovalcode                            String?                       @db.VarChar(15)
+  currencyrateid                                    Int?
+  subtotal                                          Decimal                       @default(0.00) @db.Decimal
+  taxamt                                            Decimal                       @default(0.00) @db.Decimal
+  freight                                           Decimal                       @default(0.00) @db.Decimal
+  totaldue                                          Decimal?                      @db.Decimal
+  comment                                           String?                       @db.VarChar(128)
+  rowguid                                           String                        @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate                                      DateTime                      @default(now()) @db.Timestamp(6)
+  salesorderdetail                                  salesorderdetail[]
+  address_salesorderheader_billtoaddressidToaddress address                       @relation("salesorderheader_billtoaddressidToaddress", fields: [billtoaddressid], references: [addressid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_Address_BillToAddressID")
+  address_salesorderheader_shiptoaddressidToaddress address                       @relation("salesorderheader_shiptoaddressidToaddress", fields: [shiptoaddressid], references: [addressid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_Address_ShipToAddressID")
+  creditcard                                        creditcard?                   @relation(fields: [creditcardid], references: [creditcardid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_CreditCard_CreditCardID")
+  currencyrate                                      currencyrate?                 @relation(fields: [currencyrateid], references: [currencyrateid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_CurrencyRate_CurrencyRateID")
+  customer                                          customer                      @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_Customer_CustomerID")
+  salesperson                                       salesperson?                  @relation(fields: [salespersonid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_SalesPerson_SalesPersonID")
+  salesterritory                                    salesterritory?               @relation(fields: [territoryid], references: [territoryid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_SalesTerritory_TerritoryID")
+  shipmethod                                        shipmethod                    @relation(fields: [shipmethodid], references: [shipmethodid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeader_ShipMethod_ShipMethodID")
+  salesorderheadersalesreason                       salesorderheadersalesreason[]
+
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salesorderheadersalesreason {
+  salesorderid     Int
+  salesreasonid    Int
+  modifieddate     DateTime         @default(now()) @db.Timestamp(6)
+  salesorderheader salesorderheader @relation(fields: [salesorderid], references: [salesorderid], onDelete: Cascade, onUpdate: NoAction, map: "FK_SalesOrderHeaderSalesReason_SalesOrderHeader_SalesOrderID")
+  salesreason      salesreason      @relation(fields: [salesreasonid], references: [salesreasonid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesOrderHeaderSalesReason_SalesReason_SalesReasonID")
+
+  @@id([salesorderid, salesreasonid], map: "PK_SalesOrderHeaderSalesReason_SalesOrderID_SalesReasonID")
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salesperson {
+  businessentityid        Int                       @id(map: "PK_SalesPerson_BusinessEntityID")
+  territoryid             Int?
+  salesquota              Decimal?                  @db.Decimal
+  bonus                   Decimal                   @default(0.00) @db.Decimal
+  commissionpct           Decimal                   @default(0.00) @db.Decimal
+  salesytd                Decimal                   @default(0.00) @db.Decimal
+  saleslastyear           Decimal                   @default(0.00) @db.Decimal
+  rowguid                 String                    @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate            DateTime                  @default(now()) @db.Timestamp(6)
+  salesorderheader        salesorderheader[]
+  employee                employee                  @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesPerson_Employee_BusinessEntityID")
+  salesterritory          salesterritory?           @relation(fields: [territoryid], references: [territoryid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesPerson_SalesTerritory_TerritoryID")
+  salespersonquotahistory salespersonquotahistory[]
+  salesterritoryhistory   salesterritoryhistory[]
+  store                   store[]
+
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salespersonquotahistory {
+  businessentityid Int
+  quotadate        DateTime    @db.Timestamp(6)
+  salesquota       Decimal     @db.Decimal
+  rowguid          String      @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime    @default(now()) @db.Timestamp(6)
+  salesperson      salesperson @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesPersonQuotaHistory_SalesPerson_BusinessEntityID")
+
+  @@id([businessentityid, quotadate], map: "PK_SalesPersonQuotaHistory_BusinessEntityID_QuotaDate")
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salesreason {
+  salesreasonid               Int                           @id(map: "PK_SalesReason_SalesReasonID") @default(autoincrement())
+  name                        String                        @db.VarChar(50)
+  reasontype                  String                        @db.VarChar(50)
+  modifieddate                DateTime                      @default(now()) @db.Timestamp(6)
+  salesorderheadersalesreason salesorderheadersalesreason[]
+
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salestaxrate {
+  salestaxrateid  Int           @id(map: "PK_SalesTaxRate_SalesTaxRateID") @default(autoincrement())
+  stateprovinceid Int
+  taxtype         Int           @db.SmallInt
+  taxrate         Decimal       @default(0.00) @db.Decimal
+  name            String        @db.VarChar(50)
+  rowguid         String        @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate    DateTime      @default(now()) @db.Timestamp(6)
+  stateprovince   stateprovince @relation(fields: [stateprovinceid], references: [stateprovinceid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesTaxRate_StateProvince_StateProvinceID")
+
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salesterritory {
+  territoryid           Int                     @id(map: "PK_SalesTerritory_TerritoryID") @default(autoincrement())
+  name                  String                  @db.VarChar(50)
+  countryregioncode     String                  @db.VarChar(3)
+  group                 String                  @db.VarChar(50)
+  salesytd              Decimal                 @default(0.00) @db.Decimal
+  saleslastyear         Decimal                 @default(0.00) @db.Decimal
+  costytd               Decimal                 @default(0.00) @db.Decimal
+  costlastyear          Decimal                 @default(0.00) @db.Decimal
+  rowguid               String                  @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate          DateTime                @default(now()) @db.Timestamp(6)
+  stateprovince         stateprovince[]
+  customer              customer[]
+  salesorderheader      salesorderheader[]
+  salesperson           salesperson[]
+  countryregion         countryregion           @relation(fields: [countryregioncode], references: [countryregioncode], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesTerritory_CountryRegion_CountryRegionCode")
+  salesterritoryhistory salesterritoryhistory[]
+
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model salesterritoryhistory {
+  businessentityid Int
+  territoryid      Int
+  startdate        DateTime       @db.Timestamp(6)
+  enddate          DateTime?      @db.Timestamp(6)
+  rowguid          String         @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime       @default(now()) @db.Timestamp(6)
+  salesperson      salesperson    @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesTerritoryHistory_SalesPerson_BusinessEntityID")
+  salesterritory   salesterritory @relation(fields: [territoryid], references: [territoryid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SalesTerritoryHistory_SalesTerritory_TerritoryID")
+
+  @@id([businessentityid, startdate, territoryid], map: "PK_SalesTerritoryHistory_BusinessEntityID_StartDate_TerritoryID")
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model shoppingcartitem {
+  shoppingcartitemid Int      @id(map: "PK_ShoppingCartItem_ShoppingCartItemID") @default(autoincrement())
+  shoppingcartid     String   @db.VarChar(50)
+  quantity           Int      @default(1)
+  productid          Int
+  datecreated        DateTime @default(now()) @db.Timestamp(6)
+  modifieddate       DateTime @default(now()) @db.Timestamp(6)
+  product            product  @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_ShoppingCartItem_Product_ProductID")
+
+  @@schema("sales")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model specialoffer {
+  specialofferid      Int                   @id(map: "PK_SpecialOffer_SpecialOfferID") @default(autoincrement())
+  description         String                @db.VarChar(255)
+  discountpct         Decimal               @default(0.00) @db.Decimal
+  type                String                @db.VarChar(50)
+  category            String                @db.VarChar(50)
+  startdate           DateTime              @db.Timestamp(6)
+  enddate             DateTime              @db.Timestamp(6)
+  minqty              Int                   @default(0)
+  maxqty              Int?
+  rowguid             String                @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate        DateTime              @default(now()) @db.Timestamp(6)
+  specialofferproduct specialofferproduct[]
+
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model specialofferproduct {
+  specialofferid   Int
+  productid        Int
+  rowguid          String             @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime           @default(now()) @db.Timestamp(6)
+  salesorderdetail salesorderdetail[]
+  product          product            @relation(fields: [productid], references: [productid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SpecialOfferProduct_Product_ProductID")
+  specialoffer     specialoffer       @relation(fields: [specialofferid], references: [specialofferid], onDelete: NoAction, onUpdate: NoAction, map: "FK_SpecialOfferProduct_SpecialOffer_SpecialOfferID")
+
+  @@id([specialofferid, productid], map: "PK_SpecialOfferProduct_SpecialOfferID_ProductID")
+  @@schema("sales")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model store {
+  businessentityid Int            @id(map: "PK_Store_BusinessEntityID")
+  name             String         @db.VarChar(50)
+  salespersonid    Int?
+  demographics     String?        @db.Xml
+  rowguid          String         @default(dbgenerated("uuid_generate_v1()")) @db.Uuid
+  modifieddate     DateTime       @default(now()) @db.Timestamp(6)
+  customer         customer[]
+  businessentity   businessentity @relation(fields: [businessentityid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Store_BusinessEntity_BusinessEntityID")
+  salesperson      salesperson?   @relation(fields: [salespersonid], references: [businessentityid], onDelete: NoAction, onUpdate: NoAction, map: "FK_Store_SalesPerson_SalesPersonID")
+
+  @@schema("sales")
+}
